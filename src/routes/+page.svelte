@@ -539,6 +539,17 @@
       }, 10000); // 10 秒超时
 
       try {
+        // 检查麦克风权限
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('浏览器不支持媒体设备访问，请使用现代浏览器并启用HTTPS');
+        }
+
+        // 检查HTTPS协议（生产环境必需）
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+          alert('⚠️ 安全提示：麦克风功能需要HTTPS协议才能工作。\n\n请确保：\n1. 使用HTTPS访问（https://你的域名:5173）\n2. 在浏览器中允许麦克风权限\n3. 检查防火墙和网络设置');
+          throw new Error('需要HTTPS协议才能访问麦克风');
+        }
+
         await wavRecorder.begin();
         await wavStreamPlayer.connect();
         await client?.connect();
@@ -582,8 +593,40 @@
       }
     } catch (error) {
       console.error('Connection error:', error);
-      connectionError = '连接失败，请重试';
-      alert(connectionError);
+
+      // 根据错误类型提供具体解决方案
+      if (error.message?.includes('user media') || error.message?.includes('麦克风')) {
+        connectionError = '❌ 麦克风权限被拒绝';
+        alert(`🎤 麦克风权限问题解决方案：
+
+🔧 HTTP部署解决方案：
+1. 配置HTTPS证书（推荐）
+2. 或使用反向代理添加SSL
+
+🌐 HTTPS访问方法：
+• 使用域名+SSL证书
+• 或使用cloudflare等CDN服务
+
+📱 临时测试方案：
+• 在本地localhost:5173测试
+• 使用Chrome://flags启用不安全源的麦克风权限`);
+      } else if (error.message?.includes('网络') || error.message?.includes('timeout')) {
+        connectionError = '🌐 网络连接超时';
+        alert(`🌍 海外服务器连接国内API解决方案：
+
+🔧 网络优化：
+1. 检查防火墙设置
+2. 确认API服务器地址正确
+3. 考虑使用代理或VPN
+
+📡 API配置检查：
+• StepFun API Key是否有效
+• 服务器地址: wss://api.stepfun.com/v1/realtime
+• 检查账户余额和使用限制`);
+      } else {
+        connectionError = '连接失败，请重试';
+        alert(connectionError);
+      }
 
       // 确保断开连接并重置状态
       client?.disconnect();
