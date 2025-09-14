@@ -46,15 +46,102 @@
 
   let selectedVoice = $state(voices[0]); // 选择的音色
   let allVoices = $state(voices); // 所有音色(系统音色+自定义音色)
-  let instructions = $state(defaultInstruction); // 默认人设
+  let instructions = $state(`你是一个专业的消防数字人，名叫"小跃"，专门提供消防安全知识和紧急情况处理指导。
+
+你的专业能力包括：
+- 提供各类火灾的安全知识和应急处理方法
+- 指导正确使用各类灭火器材
+- 提供紧急联系方式和求助指南
+- 进行消防安全教育和预防措施指导
+
+你可以使用以下专业工具：
+1. get_fire_safety_info - 获取不同场景下的火灾安全知识
+2. get_emergency_contact - 获取各地紧急联系电话
+3. check_fire_extinguisher - 检查灭火器类型和使用方法
+
+与用户交流时，请：
+- 保持专业、冷静、准确的态度
+- 优先关注用户和他人的生命安全
+- 在紧急情况下，首先指导立即的安全措施
+- 适时使用工具函数提供详细的专业信息
+- 用简洁明了的语言解释复杂的消防知识
+
+记住：安全第一，预防为主！`); // 消防数字人专业指令
   let newInstruction = $state((() => instructions)()); // 这是一个副本，用于在模态框中编辑，当点击确定时，将其赋值给 instruction，否则不会改变 instruction
   let temperature = $state(0.8); // 温度
   let conversationalMode = $state('manual'); // 会话模式，manual 或 realtime
   let inputAudioFormat = $state(audioFormats[0]); // 输入音频格式
   let outputAudioFormat = $state(audioFormats[0]); // 输出音频格式
 
+  // 背景设置
+  let backgroundType = $state('image'); // 'image' 或 'video'
+  let backgroundUrl = $state('/firefighter-avatar.png'); // 默认背景图片
+  let customBackgroundUrl = $state(''); // 自定义背景URL
+
+  // 函数调用相关
+  let enableFunctionCalling = $state(true); // 是否启用函数调用
+  let toolCalls: Array<{id: string, name: string, arguments: any, result?: any, timestamp: string}> = $state([]); // 工具调用历史
+
+  // UI状态控制
+  let isDebugCollapsed = $state(false); // 调试面板是否折叠
+  let isImmersiveMode = $state(false); // 沉浸式对话模式
+
+  // 消防工具函数定义
+  const firefighterTools = [
+    {
+      name: 'get_fire_safety_info',
+      description: '获取火灾安全知识和紧急处理方法',
+      parameters: {
+        type: 'object',
+        properties: {
+          scenario: {
+            type: 'string',
+            description: '火灾场景，如：家庭火灾、办公室火灾、森林火灾等',
+            enum: ['家庭火灾', '办公室火灾', '森林火灾', '电器火灾', '燃气火灾', '汽车火灾']
+          }
+        },
+        required: ['scenario']
+      }
+    },
+    {
+      name: 'get_emergency_contact',
+      description: '获取紧急联系电话和求助方式',
+      parameters: {
+        type: 'object',
+        properties: {
+          location: {
+            type: 'string',
+            description: '所在地区，如：北京、上海、广州等'
+          },
+          emergency_type: {
+            type: 'string',
+            description: '紧急情况类型',
+            enum: ['火灾', '医疗急救', '交通事故', '其他紧急情况']
+          }
+        },
+        required: ['location', 'emergency_type']
+      }
+    },
+    {
+      name: 'check_fire_extinguisher',
+      description: '检查灭火器类型和使用方法',
+      parameters: {
+        type: 'object',
+        properties: {
+          fire_type: {
+            type: 'string',
+            description: '火灾类型',
+            enum: ['A类-固体火灾', 'B类-液体火灾', 'C类-气体火灾', 'D类-金属火灾', 'E类-电气火灾']
+          }
+        },
+        required: ['fire_type']
+      }
+    }
+  ];
+
   let instructionsModal: HTMLDialogElement; // 修改人设的模态框
   let settingsModal: HTMLDialogElement; // 设置的模态框
+  let backgroundModal: HTMLDialogElement; // 背景设置的模态框
 
   // 获取自定义音色
   async function fetchCustomVoices() {
@@ -121,6 +208,171 @@
       fetchCustomVoices();
     }
   });
+
+  // 消防工具函数处理器
+  const toolHandlers = {
+    get_fire_safety_info: (args: {scenario: string}) => {
+      const safetyInfo = {
+        '家庭火灾': {
+          immediate_actions: [
+            '立即报警119',
+            '切断电源和燃气',
+            '用湿毛巾捂住口鼻',
+            '从安全通道撤离'
+          ],
+          prevention: [
+            '定期检查电器设备',
+            '不超负荷用电',
+            '规范使用燃气',
+            '安装烟感报警器'
+          ],
+          tools: ['干粉灭火器', '灭火毯', '逃生绳']
+        },
+        '办公室火灾': {
+          immediate_actions: [
+            '启动火灾报警系统',
+            '组织人员有序撤离',
+            '使用楼梯逃生',
+            '到指定集合点'
+          ],
+          prevention: [
+            '制定应急预案',
+            '定期消防演练',
+            '保持通道畅通',
+            '检查消防设施'
+          ],
+          tools: ['消火栓', '自动喷淋系统', '应急照明']
+        },
+        '电器火灾': {
+          immediate_actions: [
+            '立即断电',
+            '使用C类灭火器',
+            '勿用水扑救',
+            '确保人员安全'
+          ],
+          prevention: [
+            '定期检查线路',
+            '避免私拉乱接',
+            '使用合格电器',
+            '不超负荷运行'
+          ],
+          tools: ['二氧化碳灭火器', '干粉灭火器', '绝缘手套']
+        }
+      };
+
+      const info = safetyInfo[args.scenario] || safetyInfo['家庭火灾'];
+      return {
+        scenario: args.scenario,
+        safety_info: info,
+        timestamp: new Date().toISOString()
+      };
+    },
+
+    get_emergency_contact: (args: {location: string, emergency_type: string}) => {
+      const contacts = {
+        fire: '119 - 火警电话',
+        medical: '120 - 急救电话',
+        police: '110 - 报警电话',
+        traffic: '122 - 交通事故报警电话'
+      };
+
+      const localContacts = {
+        '北京': { rescue: '010-119', hospital: '010-120' },
+        '上海': { rescue: '021-119', hospital: '021-120' },
+        '广州': { rescue: '020-119', hospital: '020-120' }
+      };
+
+      return {
+        location: args.location,
+        emergency_type: args.emergency_type,
+        national_emergency: contacts,
+        local_contacts: localContacts[args.location] || localContacts['北京'],
+        instructions: [
+          '保持冷静',
+          '准确描述地点',
+          '详细说明情况',
+          '听从调度指挥'
+        ],
+        timestamp: new Date().toISOString()
+      };
+    },
+
+    check_fire_extinguisher: (args: {fire_type: string}) => {
+      const extinguisherInfo = {
+        'A类-固体火灾': {
+          suitable_extinguishers: ['水基型', '泡沫型', '干粉型'],
+          usage: [
+            '拔掉保险销',
+            '握住喷嘴对准火源根部',
+            '压下手柄喷射',
+            '左右摆动覆盖燃烧面'
+          ],
+          distance: '2-3米安全距离'
+        },
+        'E类-电气火灾': {
+          suitable_extinguishers: ['二氧化碳', '干粉型'],
+          usage: [
+            '先切断电源',
+            '保持安全距离',
+            '从火源根部扑救',
+            '注意防止复燃'
+          ],
+          distance: '1.5-2米安全距离',
+          warning: '严禁使用水基型灭火器'
+        }
+      };
+
+      const info = extinguisherInfo[args.fire_type] || extinguisherInfo['A类-固体火灾'];
+      return {
+        fire_type: args.fire_type,
+        extinguisher_info: info,
+        general_tips: [
+          '检查压力表是否正常',
+          '确认灭火器是否过期',
+          '熟悉操作步骤',
+          '确保逃生路线畅通'
+        ],
+        timestamp: new Date().toISOString()
+      };
+    }
+  };
+
+  // 注册消防工具函数到客户端
+  function registerFirefighterTools() {
+    if (!client) return;
+
+    firefighterTools.forEach(tool => {
+      try {
+        client?.addTool(tool, async (args: any) => {
+          console.log(`调用工具: ${tool.name}`, args);
+
+          // 记录工具调用
+          const callId = Date.now().toString();
+          const toolCall = {
+            id: callId,
+            name: tool.name,
+            arguments: args,
+            timestamp: new Date().toISOString()
+          };
+
+          const handler = toolHandlers[tool.name];
+          if (handler) {
+            const result = handler(args);
+            toolCall.result = result;
+            toolCalls.push(toolCall);
+            return result;
+          } else {
+            const error = `未找到工具处理器: ${tool.name}`;
+            toolCall.result = { error };
+            toolCalls.push(toolCall);
+            return { error };
+          }
+        });
+      } catch (error) {
+        console.error(`注册工具失败: ${tool.name}`, error);
+      }
+    });
+  }
 
   /**
    * 获取消息的文本内容
@@ -316,6 +568,11 @@
           await wavRecorder.record(data => client?.appendInputAudio(data.mono));
         }
 
+        // 注册消防工具函数
+        if (enableFunctionCalling) {
+          registerFirefighterTools();
+        }
+
         // 设置连接状态
         isConnected = true;
       } catch (innerError) {
@@ -390,6 +647,11 @@
     client?.updateSession({
       turn_detection: conversationalMode === 'manual' ? null : { type: 'server_vad' }
     });
+
+    // 注册消防工具函数
+    if (enableFunctionCalling) {
+      registerFirefighterTools();
+    }
     if (conversationalMode !== 'manual' && client?.isConnected()) {
       await wavRecorder.record(data => client?.appendInputAudio(data.mono));
     }
@@ -558,10 +820,31 @@
   }
 </script>
 
-<div class="bg-base-100 flex h-screen flex-col p-4">
+<div class="relative flex h-screen flex-col p-4">
+  <!-- 全屏消防数字人背景 -->
+  <div class="fixed inset-0 z-0">
+    <img
+      src="/firefighter-avatar.png"
+      alt="消防数字人背景"
+      class="w-full h-full object-cover"
+    />
+    <!-- 智能遮罩层：中心较透明，边缘较深 -->
+    <div class="absolute inset-0 bg-gradient-to-br from-black/40 via-black/20 to-black/50"></div>
+    <!-- 内容区域遮罩 -->
+    <div class="absolute inset-0 bg-black/30"></div>
+  </div>
+
+  <!-- 内容层 -->
+  <div class="relative z-10 flex h-full flex-col">
   <!-- 页面顶部 连接、断开连接 按钮 -->
-  <div class="mb-4 flex items-center justify-between">
-    <h1 class="text-xl font-bold">Stepfun Realtime 实时对话体验</h1>
+  <div class="mb-4 flex items-center justify-between transition-all duration-500 {isImmersiveMode ? 'opacity-20 hover:opacity-100' : ''}">
+    <div class="flex items-center gap-4">
+      <h1 class="text-2xl font-bold text-white drop-shadow-lg">🚒 消防数字人</h1>
+      <button onclick={() => backgroundModal.showModal()} class="btn btn-sm rounded-box bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20">
+        <Settings size={14} />
+        背景设置
+      </button>
+    </div>
     <div class="flex items-center justify-end space-x-2">
       <!-- 显示连接错误信息 -->
       {#if connectionError}
@@ -625,6 +908,11 @@
           修改人设
         </button>
 
+        <label class="flex items-center gap-2 mr-2">
+          <input type="checkbox" bind:checked={enableFunctionCalling} class="checkbox checkbox-sm" />
+          <span class="text-sm">函数调用</span>
+        </label>
+
         <button onclick={debounce(disconnectConversation, 500)} class="btn rounded-box bg-rose-500 text-slate-50">点击断开连接</button>
       {/if}
     </div>
@@ -632,50 +920,99 @@
 
   <div class="flex h-full min-h-0 gap-2">
     <!-- 主要内容区域 -->
-    <div class="bg-base-100 rounded-box flex flex-1 flex-col overflow-hidden border border-slate-300/20 shadow-md dark:border-slate-500/40">
+    <div class="rounded-box flex flex-1 flex-col overflow-hidden border shadow-2xl transition-all duration-500
+      {isImmersiveMode ? 'bg-transparent border-transparent' : 'bg-white/10 backdrop-blur-md border-white/20'}">
       {#if !isConnected}
         <div class="flex h-full flex-col items-center justify-center text-center">
           <div class="mb-8 flex items-center justify-center gap-2">
-            <BadgeInfo class="size-5" />
-            <h3 class="text-lg font-semibold">开始实时对话体验</h3>
+            <BadgeInfo class="size-5 text-orange-300" />
+            <h3 class="text-lg font-semibold text-white">开始消防数字人对话体验</h3>
           </div>
-          <ol class="list-inside list-decimal text-left">
-            <li class="mb-4">
-              <span class="font-semibold">设置服务器信息：</span>
-              点击 "服务器设置" 按钮，填写服务器地址、模型和 API Key
-            </li>
-            <li>
-              <span class="font-semibold">连接到服务器：</span>
-              点击 "点击连接" 按钮，即可开始实时对话
-            </li>
-          </ol>
+          <div class="bg-black/30 backdrop-blur-sm rounded-lg p-6 max-w-md">
+            <ol class="list-inside list-decimal text-left text-white/90 space-y-3">
+              <li>
+                <span class="font-semibold text-orange-300">设置服务器信息：</span>
+                点击 "服务器设置" 按钮，填写服务器地址、模型和 API Key
+              </li>
+              <li>
+                <span class="font-semibold text-orange-300">连接数字人：</span>
+                点击 "点击连接" 按钮，即可开始消防安全咨询
+              </li>
+              <li>
+                <span class="font-semibold text-orange-300">开启工具功能：</span>
+                勾选"函数调用"获得专业消防安全指导
+              </li>
+            </ol>
+          </div>
         </div>
       {:else}
-        <!-- AI 圆圈形象 -->
+        <!-- 消防数字人状态指示器 -->
         <div class="flex flex-col items-center justify-center p-8">
-          <div
-            class="relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-tr shadow-lg transition-all duration-300
-				{isAISpeaking ? 'from-pink-500 to-rose-500' : isRecording ? 'from-blue-500 to-rose-500' : 'from-pink-300 to-rose-400'}"
-            style:transform={isAISpeaking ? 'scale(1.05)' : 'scale(1)'}
-            style:animation={isAISpeaking ? 'pulse 1.5s infinite ease-in-out' : 'none'}
-          >
-            <span class="text-lg font-medium text-white">
-              {#if isRecording}
-                Listening...
-              {:else if isAISpeaking}
-                Speaking
-              {:else}
-                AI
-              {/if}
-            </span>
+          <div class="relative">
+            <!-- 状态指示环 -->
+            <div
+              class="relative flex h-24 w-24 items-center justify-center rounded-full backdrop-blur-sm border-4 transition-all duration-300
+				{isAISpeaking ? 'border-red-400 shadow-red-400/50 bg-red-500/20' : isRecording ? 'border-blue-400 shadow-blue-400/50 bg-blue-500/20' : 'border-orange-400 shadow-orange-400/50 bg-orange-500/20'}"
+              style:transform={isAISpeaking ? 'scale(1.1)' : 'scale(1)'}
+              style:animation={isAISpeaking ? 'pulse 1.5s infinite ease-in-out' : 'none'}
+            >
+              <!-- 中心状态文字 -->
+              <div class="text-center">
+                <div class="text-2xl mb-1">
+                  {#if isRecording}
+                    🎤
+                  {:else if isAISpeaking}
+                    💬
+                  {:else}
+                    🚒
+                  {/if}
+                </div>
+                <span class="text-xs font-medium text-white">
+                  {#if isRecording}
+                    听取中
+                  {:else if isAISpeaking}
+                    回答中
+                  {:else}
+                    待命中
+                  {/if}
+                </span>
+              </div>
+            </div>
+
+            <!-- 脉冲效果 -->
+            {#if isAISpeaking || isRecording}
+              <div class="absolute inset-0 rounded-full animate-ping {isAISpeaking ? 'bg-red-400/30' : 'bg-blue-400/30'}"></div>
+            {/if}
           </div>
         </div>
+
+        <!-- 工具调用历史 -->
+        {#if toolCalls.length > 0}
+          <div class="border-b border-white/20 p-2">
+            <h4 class="text-sm font-medium mb-2 text-orange-300">🔧 工具调用记录</h4>
+            <div class="space-y-2 max-h-32 overflow-y-auto">
+              {#each toolCalls.slice(-3) as call}
+                <div class="bg-white/10 backdrop-blur-sm rounded p-2 text-xs border border-white/10">
+                  <div class="font-medium text-orange-200">{call.name}</div>
+                  <div class="text-gray-200">参数: {JSON.stringify(call.arguments)}</div>
+                  {#if call.result}
+                    <div class="text-green-300 mt-1">✓ 执行成功</div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         <!-- 对话历史 -->
         <div class="flex-1 space-y-4 overflow-y-auto p-2" use:autoScroll>
           {#each items as item}
-            <div class="rounded-box flex flex-col p-2 {item.role === 'user' ? 'dark:bg-base-200 ml-auto bg-blue-100' : 'bg-base-200 mr-auto'} min-h-18 max-w-[80%]">
-              <div class="mb-1 font-semibold {item.role === 'user' ? 'text-blue-700 dark:text-blue-400' : 'text-rose-400'}">
+            <div class="rounded-box flex flex-col p-3 transition-all duration-300 min-h-18 max-w-[80%]
+              {item.role === 'user'
+                ? `ml-auto ${isImmersiveMode ? 'bg-blue-500/10 border border-blue-400/20' : 'bg-blue-500/20 backdrop-blur-sm border border-blue-400/30'}`
+                : `mr-auto ${isImmersiveMode ? 'bg-white/5 border border-white/10' : 'bg-white/15 backdrop-blur-sm border border-white/20'}`
+              }">
+              <div class="mb-1 font-semibold {item.role === 'user' ? 'text-blue-200' : 'text-orange-200'}">
                 <div class="flex items-center gap-2">
                   <span>{item.role === 'user' ? 'You' : 'AI'}</span>
                   {#if item.formatted?.file}
@@ -704,9 +1041,9 @@
               </div>
               <div>
                 {#if getTextContent(item)}
-                  <p>{getTextContent(item)}</p>
+                  <p class="text-white/90">{getTextContent(item)}</p>
                 {:else}
-                  <div class="skeleton h-4 w-32"></div>
+                  <div class="skeleton h-4 w-32 bg-white/20"></div>
                 {/if}
               </div>
             </div>
@@ -714,7 +1051,7 @@
         </div>
 
         <!-- 按住说话 按钮 -->
-        <div class="border-base-300/50 border-t p-2">
+        <div class="p-2 transition-all duration-300 {isImmersiveMode ? 'border-transparent' : 'border-white/20 border-t'}">
           {#if isConnected}
             {#if conversationalMode === 'manual'}
               <div class="flex justify-center">
@@ -743,39 +1080,72 @@
     </div>
 
     <!-- 调试事件日志 -->
-    <div class="bg-base-100 rounded-box flex max-h-full min-h-0 w-1/3 min-w-72 flex-col overflow-hidden border border-slate-300/20 shadow-md dark:border-slate-500/40">
-      <div class="flex h-12 items-center justify-between p-2">
-        <h2 class="text-xl font-semibold">调试日志</h2>
-        <div>
-          {#if realtimeEvents.length > 0}
-            <button class="btn btn-sm" onclick={() => (expandedEvents = {})}>全部折叠</button>
-          {/if}
-          {#if realtimeEvents.length > 0}
+    <div class="rounded-box flex max-h-full min-h-0 flex-col overflow-hidden border shadow-2xl transition-all duration-500
+      {isDebugCollapsed ? 'w-12 min-w-12' : 'w-1/3 min-w-72'}
+      {isImmersiveMode || isDebugCollapsed ? 'bg-transparent border-transparent' : 'bg-black/20 backdrop-blur-md border-white/10'}">
+      {#if !isDebugCollapsed}
+        <div class="flex h-12 items-center justify-between p-2">
+          <h2 class="text-xl font-semibold text-white">调试日志</h2>
+          <div class="flex items-center gap-2">
+            <!-- 沉浸模式切换 -->
             <button
-              class="btn btn-sm"
-              onclick={() => {
-                expandedEvents = {};
-                realtimeEvents = [];
-              }}
+              class="btn btn-xs bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-400/30"
+              onclick={() => isImmersiveMode = !isImmersiveMode}
+              title="切换沉浸式对话模式"
             >
-              清掉
+              {isImmersiveMode ? '👁️‍🗨️ 退出' : '🎭 沉浸'}
             </button>
-          {/if}
+
+            {#if realtimeEvents.length > 0}
+              <button class="btn btn-sm" onclick={() => (expandedEvents = {})}>全部折叠</button>
+            {/if}
+            {#if realtimeEvents.length > 0}
+              <button
+                class="btn btn-sm"
+                onclick={() => {
+                  expandedEvents = {};
+                  realtimeEvents = [];
+                }}
+              >
+                清掉
+              </button>
+            {/if}
+
+            <!-- 面板折叠按钮 -->
+            <button
+              class="btn btn-sm bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onclick={() => isDebugCollapsed = true}
+              title="折叠调试面板"
+            >
+              ➡️
+            </button>
+          </div>
         </div>
-      </div>
+      {:else}
+        <!-- 折叠状态的展开按钮 -->
+        <div class="flex h-full items-center justify-center">
+          <button
+            class="btn btn-sm bg-white/10 border-white/20 text-white hover:bg-white/20 rotate-90"
+            onclick={() => isDebugCollapsed = false}
+            title="展开调试面板"
+          >
+            📊
+          </button>
+        </div>
+      {/if}
       <!-- 过滤控制区域 -->
-      {#if realtimeEvents.length > 0}
-        <div class="border-base-300 flex items-center gap-2 border-b p-2">
-          <select class="select select-sm select-bordered w-32" bind:value={filterSource}>
+      {#if realtimeEvents.length > 0 && !isDebugCollapsed}
+        <div class="border-white/20 flex items-center gap-2 border-b p-2">
+          <select class="select select-sm select-bordered w-32 bg-black/30 border-white/20 text-white" bind:value={filterSource}>
             <option value="all">全部来源</option>
             <option value="server">服务器</option>
             <option value="client">客户端</option>
           </select>
           <div class="relative flex-1">
-            <input type="text" class="input input-sm input-bordered w-full pr-8" placeholder="输入关键词过滤日志" bind:value={filterText} />
+            <input type="text" class="input input-sm input-bordered w-full pr-8 bg-black/30 border-white/20 text-white placeholder-white/50" placeholder="输入关键词过滤日志" bind:value={filterText} />
             {#if filterText}
               <button
-                class="absolute top-1/2 right-2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 hover:text-slate-700 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+                class="absolute top-1/2 right-2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white/70 hover:bg-white/30 hover:text-white"
                 onclick={() => (filterText = '')}
               >
                 <X size={16} />
@@ -784,25 +1154,26 @@
           </div>
         </div>
       {/if}
-      <div class="min-h-0 flex-1 overflow-y-auto p-2 text-sm" use:autoScroll>
+      {#if !isDebugCollapsed}
+        <div class="min-h-0 flex-1 overflow-y-auto p-2 text-sm" use:autoScroll>
         {#if realtimeEvents.length === 0}
-          <div class="flex h-full items-center justify-center text-center">暂无调试日志</div>
+          <div class="flex h-full items-center justify-center text-center text-white/60">暂无调试日志</div>
         {:else if filterEvents(realtimeEvents).length === 0}
-          <div class="flex h-full items-center justify-center text-center">没有匹配的日志</div>
+          <div class="flex h-full items-center justify-center text-center text-white/60">没有匹配的日志</div>
         {:else}
           {#each filterEvents(realtimeEvents) as event, i (event.time + '-' + i)}
-            <div class="border-base-300/40 mb-1 border-b py-1">
+            <div class="border-white/20 mb-1 border-b py-1">
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div class="flex cursor-pointer items-center justify-between" onclick={() => toggleEventDetails(`${i}`)}>
                 <div class="flex min-w-0 items-center">
-                  <span class="mr-2 font-mono">{formatTime(event.time)}</span>
-                  <span class="{event.source === 'server' ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400'} font-medium">
+                  <span class="mr-2 font-mono text-gray-300">{formatTime(event.time)}</span>
+                  <span class="{event.source === 'server' ? 'text-purple-300' : 'text-blue-300'} font-medium">
                     {event.source}
                   </span>
-                  <span class="ml-2 max-w-2/3 truncate text-wrap">{event.event.type}</span>
+                  <span class="ml-2 max-w-2/3 truncate text-wrap text-white/80">{event.event.type}</span>
                 </div>
-                <div>
+                <div class="text-white/50">
                   {#if expandedEvents[`${i}`]}
                     <ArrowUp size={16} />
                   {:else}
@@ -811,13 +1182,15 @@
                 </div>
               </div>
               {#if expandedEvents[`${i}`]}
-                <pre class="bg-base-200 mt-1 overflow-x-auto rounded p-2 text-xs">{JSON.stringify(event.event, null, 2)}</pre>
+                <pre class="bg-black/30 backdrop-blur-sm mt-1 overflow-x-auto rounded p-2 text-xs text-gray-200 border border-white/10">{JSON.stringify(event.event, null, 2)}</pre>
               {/if}
             </div>
           {/each}
         {/if}
-      </div>
+        </div>
+      {/if}
     </div>
+  </div>
   </div>
 </div>
 
@@ -868,6 +1241,55 @@
 
     <div class="modal-action">
       <button onclick={() => settingsModal.close()} class="btn rounded-box">确定</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- 背景设置模态框 -->
+<dialog bind:this={backgroundModal} class="modal">
+  <div class="modal-box">
+    <h2 class="mb-4 text-lg font-semibold">背景设置</h2>
+    <div class="space-y-4">
+      <label class="select rounded-box w-full">
+        <span class="label w-32">背景类型</span>
+        <select bind:value={backgroundType}>
+          <option value="image">图片</option>
+          <option value="video">视频</option>
+        </select>
+      </label>
+
+      <label class="input rounded-box w-full">
+        <span class="label w-32">背景URL</span>
+        <input type="text" placeholder="输入图片或视频URL" bind:value={customBackgroundUrl} />
+      </label>
+
+      <div class="flex gap-2">
+        <button
+          class="btn btn-primary rounded-box flex-1"
+          onclick={() => {
+            if (customBackgroundUrl.trim()) {
+              backgroundUrl = customBackgroundUrl.trim();
+              backgroundModal.close();
+            }
+          }}
+        >
+          应用背景
+        </button>
+        <button
+          class="btn rounded-box"
+          onclick={() => {
+            backgroundUrl = '/firefighter-avatar.png';
+            backgroundType = 'image';
+            backgroundModal.close();
+          }}
+        >
+          恢复默认
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-action">
+      <button onclick={() => backgroundModal.close()} class="btn rounded-box">关闭</button>
     </div>
   </div>
 </dialog>
