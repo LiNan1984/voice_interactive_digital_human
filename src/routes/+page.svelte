@@ -928,21 +928,54 @@
             <BadgeInfo class="size-5 text-orange-300" />
             <h3 class="text-lg font-semibold text-white">开始消防数字人对话体验</h3>
           </div>
-          <div class="bg-black/30 backdrop-blur-sm rounded-lg p-6 max-w-md">
-            <ol class="list-inside list-decimal text-left text-white/90 space-y-3">
-              <li>
-                <span class="font-semibold text-orange-300">设置服务器信息：</span>
-                点击 "服务器设置" 按钮，填写服务器地址、模型和 API Key
-              </li>
-              <li>
-                <span class="font-semibold text-orange-300">连接数字人：</span>
-                点击 "点击连接" 按钮，即可开始消防安全咨询
-              </li>
-              <li>
-                <span class="font-semibold text-orange-300">开启工具功能：</span>
-                勾选"函数调用"获得专业消防安全指导
-              </li>
-            </ol>
+          <div class="bg-black/30 backdrop-blur-sm rounded-lg p-6 max-w-2xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left text-white/90">
+              <!-- 基础设置 -->
+              <div>
+                <h4 class="font-bold text-orange-300 mb-3 text-center">🔧 基础设置</h4>
+                <ol class="list-inside list-decimal space-y-2 text-sm">
+                  <li>
+                    <span class="font-semibold text-orange-300">设置服务器信息：</span>
+                    点击 "服务器设置" 按钮，填写服务器地址、模型和 API Key
+                  </li>
+                  <li>
+                    <span class="font-semibold text-orange-300">连接数字人：</span>
+                    点击 "点击连接" 按钮，即可开始消防安全咨询
+                  </li>
+                  <li>
+                    <span class="font-semibold text-orange-300">开启工具功能：</span>
+                    勾选"函数调用"获得专业消防安全指导
+                  </li>
+                </ol>
+              </div>
+
+              <!-- 高级功能 -->
+              <div>
+                <h4 class="font-bold text-orange-300 mb-3 text-center">🎨 沉浸体验</h4>
+                <ol class="list-inside list-decimal space-y-2 text-sm">
+                  <li>
+                    <span class="font-semibold text-orange-300">自定义背景：</span>
+                    点击 "背景设置" 按钮，上传消防数字人图片或视频
+                  </li>
+                  <li>
+                    <span class="font-semibold text-orange-300">折叠调试面板：</span>
+                    点击调试日志右上角 "➡️" 按钮，最大化对话区域
+                  </li>
+                  <li>
+                    <span class="font-semibold text-orange-300">沉浸式对话：</span>
+                    点击 "🎭 沉浸" 按钮，进入完全透明的拟人对话模式
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- 专业提示 -->
+            <div class="mt-6 pt-4 border-t border-orange-300/30 text-center">
+              <p class="text-sm text-orange-200">
+                💡 <span class="font-semibold">专业提示：</span>
+                可询问"家里起火怎么办"、"电器着火用什么灭火器"等问题，获得专业消防指导
+              </p>
+            </div>
           </div>
         </div>
       {:else}
